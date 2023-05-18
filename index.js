@@ -1,250 +1,149 @@
-// Base Parameters
-var renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+let canvas = document.getElementById('game'),
+    ctx = canvas.getContext('2d'),
+    ballRadius = 9,
+    x = canvas.width / (Math.floor(Math.random() * Math.random() * 10) + 3),
+    y = canvas.height - 40,
+    dx = 2,
+    dy = -2;
 
-if (window.innerWidth > 800) {
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.shadowMap.needsUpdate = true;
-};
-document.body.appendChild(renderer.domElement);
+let paddleHeight = 12,
+    paddleWidth = 72;
 
-// Make it responsive
-window.addEventListener("resize", onWindowResize, false);
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-};
+// Paddle start position
+let paddleX = (canvas.width - paddleWidth) / 2;
 
-var camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 1, 500);
-camera.position.set(0, 2, 14);
+// Bricks
+let rowCount = 5,
+    columnCount = 9,
+    brickWidth = 54,
+    brickHeight = 18,
+    brickPadding = 12,
+    topOffset = 40,
+    leftOffset = 33,
+    score = 0;
 
-var scene = new THREE.Scene();
-var city = new THREE.Object3D();
-var smoke = new THREE.Object3D();
-var town = new THREE.Object3D();
-var createCarPos = true;
-var uSpeed = 0.001;
-
-// FOG Background
-var setcolor = 0xF02050;
-scene.background = new THREE.Color(setcolor);
-scene.fog = new THREE.Fog(setcolor, 10, 16);
-
-// Random Function
-function mathRandom(num = 8) {
-    var numValue = - Math.random() * num + Math.random() * num;
-    return numValue;
-};
-
-// Change Building Colors
-var setTintNum = true;
-function setTintColor() {
-    if (setTintNum) {
-        setTintNum = false;
-        var setColor = 0x000000;
-    } else {
-        setTintNum = true;
-        var setColor = 0x000000;
-    };
-    return setColor;
-};
-
-// Create City
-function init() {
-    var segments = 2;
-    for (var i = 1; i < 100; i++) {
-        var geometry = new THREE.CubeGeometry(1, 0, 0, segments, segments, segments);
-        var material = new THREE.MeshStandardMaterial({
-            color: setTintColor(),
-            wireframe: false,
-            shading: THREE.SmoothShading,
-            side: THREE.DoubleSide
-        });
-        var wmaterial = new THREE.MeshLambertMaterial({
-            color: 0xFFFFFF,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.03,
-            side: THREE.DoubleSide
-        });
-
-        var cube = new THREE.Mesh(geometry, material);
-        var wire = new THREE.Mesh(geometry, material);
-        var floor = new THREE.Mesh(geometry, material);
-        var wfloor = new THREE.Mesh(geometry, material);
-
-        cube.add(wfloor);
-        cube.setShadow = true;
-        cube.receiveShadow = true;
-        cube.rotationValue = 0.1 + Math.abs(mathRandom(8));
-        floor.scale.y = 0.05;
-        cube.scale.y = 0.1 + Math.abs(mathRandom(8));
-
-        var cubeWidth = 0.9;
-        cube.scale.x = cube.scale.z = cubeWidth + mathRandom(1 - cubeWidth);
-        cube.position.x = Math.round(mathRandom());
-        cube.position.z = Math.round(mathRandom());
-
-        floor.position.set(cube.position.x, 0, cube.position.z);
-
-        town.add(floor);
-        town.add(cube);
-    };
-
-    // Particulars
-    var gmaterial = new THREE.MeshToonMaterial({ color: 0xFFFF00, side: THREE.DoubleSide });
-    var gparticular = new THREE.CircleGeometry(0.01, 3);
-    var aparticular = 5;
-
-    for (var h = 1; h < 300; h++) {
-        var particular = new THREE.Mesh(gparticular, gmaterial);
-        particular.position.set(mathRandom(aparticular), mathRandom(aparticular), mathRandom(aparticular));
-        particular.rotation.set(mathRandom(), mathRandom(), mathRandom());
-        smoke.add(particular);
-    };
-
-    var pmaterial = new THREE.MeshPhongMaterial({
-        color: 0x000000,
-        side: THREE.DoubleSide,
-        roughness: 10,
-        metalness: 0.6,
-        opacity: 0.9,
-        transparent: true
-    });
-
-    var pgeometry = new THREE.PlaneGeometry(60, 60);
-    var pelement = new THREE.Mesh(pgeometry, pmaterial);
-    pelement.rotation.x = -90 * Math.PI / 180;
-    pelement.position.y = -0.001;
-    pelement.receiveShadow = true;
-    city.add(pelement);
-};
-
-// Mouse functions
-var raycaster = new THREE.Raycaster();
-var mouse = new THREE.Vector2(), INTERSECTED;
-var intersected;
-
-function onMouseMove(e) {
-    e.preventDefault();
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = - (e.clientY / window.innerHeight) * 2 + 1;
-};
-
-function onDocumentTouchStart(e) {
-    if (e.touches.length == 1) {
-        e.preventDefault();
-        mouse.x = e.touches[0].pageX - window.innerWidth / 2;
-        mouse.y = e.touches[0].pageY - window.innerHeight / 2;
-    };
-};
-function onDocumentTouchMove(e) {
-    if (e.touches.length == 1) {
-        e.preventDefault();
-        mouse.x = e.touches[0].pageX - window.innerWidth / 2;
-        mouse.y = e.touches[0].pageY - window.innerHeight / 2;
-    };
-};
-
-window.addEventListener('mousemove', onMouseMove, false);
-window.addEventListener('touchstart', onDocumentTouchStart, false);
-window.addEventListener('touchmove', onDocumentTouchMove, false);
-
-// Create lights
-var ambientLight = new THREE.AmbientLight(0xFFFFFF, 4);
-var lightFront = new THREE.SpotLight(0xFFFFFF, 20, 10);
-var lightBack = new THREE.PointLight(0xFFFFFF, 0.5);
-var spotLightHelper = new THREE.SpotLightHelper(lightFront);
-
-lightFront.rotation.x = 45 * Math.PI / 180;
-lightFront.rotation.z = -45 * Math.PI / 180;
-lightFront.position.set(5, 5, 5);
-lightFront.castShadow = true;
-lightFront.shadow.mapSize.width = 6000;
-lightFront.shadow.mapSize.height = lightFront.shadow.mapSize.width;
-lightFront.penumbra = 0.1;
-lightBack.position.set(0, 6, 0);
-
-smoke.position.y = 2;
-
-scene.add(ambientLight);
-city.add(lightFront);
-scene.add(lightBack);
-scene.add(city);
-city.add(smoke);
-city.add(town);
-
-// Grid Helper
-var gridHelper = new THREE.GridHelper(60, 120, 0xFF0000, 0x000000);
-city.add(gridHelper);
-
-// Cars World
-var createCars = function (cScale = 2, cPos = 20, cColor = 0xFFFF00) {
-    var cMat = new THREE.MeshToonMaterial({ color: cColor, side: THREE.DoubleSide });
-    var cGeo = new THREE.CubeGeometry(1, cScale / 40, cScale / 40);
-    var cElem = new THREE.Mesh(cGeo, cMat);
-    var cAmp = 3;
-
-    if (createCarPos) {
-        createCarPos = false;
-        cElem.position.x = -cPos;
-        cElem.position.z = (mathRandom(cAmp));
-
-        TweenMax.to(cElem.position, 3, { x: cPos, repeat: -1, yoyo: true, delay: mathRandom(3) });
-    } else {
-        createCarPos = true;
-        cElem.position.x = (mathRandom(cAmp));
-        cElem.position.z = -cPos;
-        cElem.rotation.y = 90 * Math.PI / 180;
-
-        TweenMax.to(cElem.position, 5, { z: cPos, repeat: -1, yoyo: true, delay: mathRandom(3), ease: Power1.easeInOut });
-    };
-    cElem.receiveShadow = true;
-    cElem.castShadow = true;
-    cElem.position.y = Math.abs(mathRandom(5));
-    city.add(cElem);
-};
-
-var generateLines = function () {
-    for (var i = 0; i < 60; i++) {
-        createCars(0.1, 20);
-    };
-};
-
-// Camera Position
-var cameraSet = function () {
-    createCars(0.1, 20, 0xFFFFFF);
-};
-
-// Animate functions
-var animate = function () {
-    var time = Date.now() * 0.00005;
-    requestAnimationFrame(animate);
-
-    city.rotation.y -= ((mouse.x * 8) - camera.rotation.y) * uSpeed;
-    city.rotation.x -= (-(mouse.y * 2) - camera.rotation.x) * uSpeed;
-    if (city.rotation.x < -0.05) {
-        city.rotation.x = -0.05;
-    } else if (city.rotation.x > 1) {
-        city.rotation.x = 1;
+// Bricks array
+let bricks = [];
+for (let c = 0; c < columnCount; c++) {
+    bricks[c] = [];
+    for (let r = 0; r < rowCount; r++) {
+        // Set position of bricks
+        bricks[c][r] = { x: 0, y: 0, status: 1 };
     }
-    var cityRotation = Math.sin(Date.now() / 5000) * 13;
-    for (let i = 0, l = town.children.length; i < l; i++) {
-        var object = town.children[i];
-    }
-
-    smoke.rotation.y += 0.01;
-    smoke.rotation.x += 0.01;
-
-    camera.lookAt(city.position);
-    renderer.render(scene, camera);
-
 }
 
+// Mouse moving eventListener and function
+document.addEventListener("mousemove", mouseMoveHandler, false);
 
-// Calling Main Functions
-generateLines();
-init();
-animate();
+// Move paddle with mouse
+function mouseMoveHandler(e) {
+    var relativeX = e.clientX - canvas.offsetLeft;
+    if (relativeX > 0 && relativeX < canvas.width) {
+        paddleX = relativeX - paddleWidth / 2;
+    }
+}
+
+// Draw paddle
+function drawPaddle() {
+    ctx.beginPath();
+    ctx.roundRect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight, 30);
+    ctx.fillStyle = '#333';
+    ctx.fill();
+    ctx.closePath();
+}
+
+// Draw ball
+function drawBall() {
+    ctx.beginPath();
+    ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+    ctx.fillStyle = '#333';
+    ctx.fill();
+    ctx.closePath();
+}
+
+// Draw Bricks
+function drawBricks() {
+    for (let c = 0; c < columnCount; c++) {
+        for (let r = 0; r < rowCount; r++) {
+            if (bricks[c][r].status === 1) {
+                let brickX = (c * (brickWidth + brickPadding)) + leftOffset;
+                let brickY = (r * (brickHeight + brickPadding)) + topOffset;
+                bricks[c][r].x = brickX;
+                bricks[c][r].y = brickY;
+                ctx.beginPath();
+                ctx.roundRect(brickX, brickY, brickWidth, brickHeight, 30);
+                ctx.fillStyle = '#333';
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+    }
+}
+
+// Track score
+function trackScore() {
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillStyle = '#333';
+    ctx.fillText('Score : ' + score, 8, 24);
+}
+
+// Check ball hit bricks
+function hitDetection() {
+    for (let c = 0; c < columnCount; c++) {
+        for (let r = 0; r < rowCount; r++) {
+            let b = bricks[c][r];
+            if (b.status === 1) {
+                if (x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
+                    dy = -dy;
+                    b.status = 0;
+                    score++;
+                    // Check win
+                    if (score === rowCount * columnCount) {
+                        alert('You Win!');
+                        document.location.reload();
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Main function
+function init() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    trackScore();
+    drawBricks();
+    drawBall();
+    drawPaddle();
+    hitDetection();
+
+    // Detect left and right walls
+    if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
+        dx = -dx;
+    }
+
+    // Detect top wall
+    if (y + dy < ballRadius) {
+        dy = -dy;
+    } else if (y + dy > canvas.height - ballRadius) {
+        // Detect paddle hits
+        if (x > paddleX && x < paddleX + paddleWidth) {
+            dy = -dy;
+        } else {
+            // If ball don't hit paddle
+            alert('Game Over!');
+            document.location.reload();
+        }
+    }
+
+    // Bottom wall
+    if (y + dy > canvas.height - ballRadius || y + dy < ballRadius) {
+        dy = -dy;
+    }
+
+    // Move Ball
+    x += dx;
+    y += dy;
+}
+
+setInterval(init, 10);
